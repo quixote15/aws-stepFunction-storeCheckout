@@ -20,7 +20,7 @@ O relacionamento entre todos os serviços participantes é descrito por um únic
 Esse projeto simula um processo de checkout pra compra de livros que inclui gerenciamento de erros e falhas, retentativas, padrão saga da resetar o estado da máquina de estados e integração com SQS (Simple Queue Service), SNS (Amazon Simple Notification Service) e DynamoDB.
 
 <h1 align="center">
-  <img alt="storeCheckout" src="https://github.com/quixote15/aws-stepFunction-storeCheckout/blob/main/assets/stepfunctions_graph.png" width="400px" />
+  <img alt="storeCheckout" src="https://github.com/quixote15/aws-stepFunction-storeCheckout/blob/main/assets/stepfunctions_graph.png" width="500px" height="600px" />
 </h1>
 
 ## ✋🏻 Pré-requisitos
