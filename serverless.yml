@@ -16,7 +16,15 @@ provider:
     - Effect: Allow
       Action: dynamodb:*
       Resource: arn:aws:dynamodb:us-east-1:335006469695:table/userTable
-
+    - Effect: Allow
+      Action: sns:*
+      Resource: arn:aws:sns:us-east-1:335006469695:NotifyCourier
+    - Effect: Allow
+      Action: sqs:*
+      Resource: arn:aws:sqs:us-east-1:335006469695:OrdersQueue
+    - Effect: Allow
+      Action: states:*
+      Resource: arn:aws:states:us-east-1:335006469695:stateMachine:storeCheckoutFlow
 plugins:
   - serverless-step-functions
 
@@ -31,6 +39,15 @@ functions:
     handler: handler.billCustomer
   restoreRedeemPoints:
     handler: handler.restoreRedeemPoints
+  restoreQuantity:
+    handler: handler.restoreQuantity
+  sqsWorker:
+    handler: handler.sqsWorker
+    events:
+      - sqs:
+          arn: arn:aws:sqs:us-east-1:335006469695:OrdersQueue
+          batchSize: 1
+
 
 stepFunctions:
   stateMachines:
@@ -84,7 +101,43 @@ stepFunctions:
               - ErrorEquals: [States.ALL]
                 ResultPath: "$.customerBilling"
                 Next: BillingError
+            Next: PrepareOrder
+          PrepareOrder:
+            Type: Task
+            Resource: arn:aws:states:::sqs:sendMessage.waitForTaskToken
+            Parameters:
+              QueueUrl: https://sqs.us-east-1.amazonaws.com/335006469695/OrdersQueue
+              MessageBody:
+                Input.$: "$"
+                Token.$: "$$.Task.Token" #From the context
+            ResultPath: "$.courierStatus"
+            Catch:
+              - ErrorEquals: [NoCourierAvailable]
+                ResultPath: "$.courierError"
+                Next: RefundCustomer
+            Next: DispatchOrder
+          DispatchOrder:
+            Type: Task
+            Resource: arn:aws:states:::sns:publish
+            Parameters:
+              TopicArn: arn:aws:sns:us-east-1:335006469695:NotifyCourier
+              Message.$: "$"
+            Next: Dispatched
+          Dispatched:
+            Type: Pass
+            Result: "Your order will be dispatched in 24 hours"
             End: true
+          RefundCustomer:
+            Type: Pass
+            Result: "Customer is refunded"
+            ResultPath: "$.refundStatus"
+            Next: RestoreQuantity
+          RestoreQuantity:
+            Type: Task
+            Resource:
+              Fn::GetAtt: [restoreQuantity, Arn]
+            ResultPath: "$.quantityRestoreStatus"
+            Next: RestoreRedeemPoints
           BookNotFoundError:
             Type: Pass
             Result: "No such book available"
