@@ -25,7 +25,12 @@ functions:
     handler: handler.checkInventory
   calculateTotal:
     handler: handler.calculateTotal
-
+  redeemPoints:
+    handler: handler.redeemPoints
+  billCustomer:
+    handler: handler.billCustomer
+  restoreRedeemPoints:
+    handler: handler.restoreRedeemPoints
 
 stepFunctions:
   stateMachines:
@@ -43,11 +48,42 @@ stepFunctions:
                 Next: BookNotFoundError
               - ErrorEquals: [BookOutOfStock] 
                 Next: BookOutOfStockError
+            ResultPath: "$.book"
             Next: calculateTotal
           calculateTotal:
             Type: Task
             Resource:
               Fn::GetAtt: [calculateTotal, Arn]
+            ResultPath: "$.total"
+            Next: isRedeemNeeded
+          isRedeemNeeded:
+            Type: Choice
+            Choices:
+              - Variable: $.redeem
+                BooleanEquals: true
+                Next: RedeemPoints
+            Default: BillCustomer
+          RedeemPoints:
+            Type: Task
+            Resource:
+              Fn::GetAtt: [redeemPoints, Arn]
+            ResultPath: "$.total"
+            Catch:
+              - ErrorEquals: [States.ALL]
+                Next: RedeemPointsError
+            Next: BillCustomer
+          BillCustomer:
+            Type: Task
+            Resource:
+              Fn::GetAtt: [billCustomer, Arn]
+            ResultPath: "$.billingStatus"
+            Retry:
+                - ErrorEquals: [States.ALL]
+                  MaxAttempts: 3
+            Catch:
+              - ErrorEquals: [States.ALL]
+                ResultPath: "$.customerBilling"
+                Next: BillingError
             End: true
           BookNotFoundError:
             Type: Pass
@@ -57,7 +93,20 @@ stepFunctions:
             Type: Pass
             Result: "Sorry, the book is out of stock"
             End: true
-
+          RedeemPointsError:
+            Type: Pass
+            Result: "Error in redeeming points"
+            End: True
+          BillingError:
+            Type: Pass
+            Result: "Billing Error"
+            ResultPath: "$.billingStatus"
+            Next: RestoreRedeemPoints
+          RestoreRedeemPoints:
+            Type: Task
+            Resource:
+              Fn::GetAtt: [restoreRedeemPoints, Arn]
+            End: true
 
 
 
