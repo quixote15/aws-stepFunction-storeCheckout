@@ -3,7 +3,8 @@
 </h1>
 
 <h3 align="center">
-  Estudo: Controle de fluxo e processos com Aws Step functions
+  Estudo: Controle de fluxo e processos com Aws Step functions. <br\>
+  
   Step Functions facilita a coordenação de componentes aplicações serverless e microserviços utilizando workflows visuais. Isso facilita a construção e o monitoramento de aplicações que escalam. 
 </h3>
 
